@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:currency_app/pages/CurrencySelectionScreen.dart';
 
 class CurrencySelectionScreen extends StatefulWidget {
   final List<Map<String, String>> currencies;
