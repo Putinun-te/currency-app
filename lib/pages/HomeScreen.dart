@@ -1,11 +1,25 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:currency_app/main.dart';
+import 'dart:convert';
 
-// HOME SCREEN
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Currency Converter',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(fontFamily: 'Inter'),
+      home: const HomeScreen(),
+    );
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -13,10 +27,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String fromCurrency = 'USD';
   String toCurrency = 'THB';
-  final amountController = TextEditingController(text: '100');
   String result = '';
+  final amountController = TextEditingController(text: '100');
 
-  // Dummy list
   final List<Map<String, String>> currencyList = [
     {'code': 'USD', 'name': 'US Dollar'},
     {'code': 'EUR', 'name': 'Euro'},
@@ -46,7 +59,32 @@ class _HomeScreenState extends State<HomeScreen> {
         } else {
           toCurrency = selected;
         }
+        result = '';
       });
+    }
+  }
+
+  Future<void> convertCurrency() async {
+    final amount = double.tryParse(amountController.text) ?? 0;
+    final url =
+        'https://api.frankfurter.app/latest?amount=$amount&from=$fromCurrency&to=$toCurrency';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final rate = data['rates'][toCurrency];
+        setState(() {
+          result = '$rate $toCurrency';
+        });
+      } else {
+        throw Exception('Failed to load rate');
+      }
+    } catch (e) {
+      print('Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error converting currency")),
+      );
     }
   }
 
@@ -158,18 +196,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 label: 'To Currency',
                 currency: toCurrency,
                 isFrom: false,
-                trailing: Text(
-                  result.isEmpty ? '' : '$result $toCurrency',
-                  style: const TextStyle(fontSize: 16),
-                ),
+                trailing: Text(result, style: const TextStyle(fontSize: 16)),
               ),
               const SizedBox(height: 32),
-              buildButton("Convert", () {
-                final amount = double.tryParse(amountController.text) ?? 0;
-                setState(() {
-                  result = (amount * 0.93).toStringAsFixed(2); // dummy logic
-                });
-              }),
+              buildButton("Convert", convertCurrency),
               const SizedBox(height: 16),
               buildButton("Add to Favourite", () {}),
               const SizedBox(height: 16),
@@ -195,7 +225,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// CURRENCY SELECTION SCREEN
 class CurrencySelectionScreen extends StatefulWidget {
   final List<Map<String, String>> currencies;
   const CurrencySelectionScreen({super.key, required this.currencies});
