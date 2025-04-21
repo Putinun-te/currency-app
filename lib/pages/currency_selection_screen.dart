@@ -5,7 +5,8 @@ class CurrencySelectionScreen extends StatefulWidget {
   const CurrencySelectionScreen({super.key, required this.currencies});
 
   @override
-  State<CurrencySelectionScreen> createState() => _CurrencySelectionScreenState();
+  State<CurrencySelectionScreen> createState() =>
+      _CurrencySelectionScreenState();
 }
 
 class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
@@ -22,12 +23,9 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Select Currency"),
         backgroundColor: const Color(0xFFE6E6E6),
-        title: const Text('Select Currency'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        foregroundColor: Colors.black,
       ),
       body: Column(
         children: [
@@ -36,16 +34,10 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
             child: TextField(
               onChanged: (val) => setState(() => search = val),
               decoration: InputDecoration(
-                hintText: "Search Currency",
+                hintText: "Search currency",
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: search.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() => search = ''),
-                      )
-                    : null,
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
@@ -56,16 +48,16 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
             child: ListView.separated(
               itemCount: filtered.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, index) {
-                final currency = filtered[index];
+              itemBuilder: (_, i) {
+                final c = filtered[i];
                 return ListTile(
-                  title: Text(currency['code']!),
-                  subtitle: Text(currency['name']!),
-                  onTap: () => Navigator.pop(context, currency['code']),
+                  title: Text(c['code']!),
+                  subtitle: Text(c['name']!),
+                  onTap: () => Navigator.pop(context, c['code']),
                 );
               },
             ),
-          ),
+          )
         ],
       ),
     );

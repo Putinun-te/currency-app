@@ -1,17 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+import 'NotificationScreen.dart';
 import 'currency_selection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final void Function(String) onAddHistory;
+  final void Function(String) onAddFavourite;
+  final VoidCallback onViewFavourite;
   final String? reConversionData;
+  final TextEditingController amountController;
+  final String fromCurrency;
+  final String toCurrency;
+  final void Function(String) onUpdateFromCurrency;
+  final void Function(String) onUpdateToCurrency;
+  final List<Map<String, dynamic>> notifications;
 
   const HomeScreen({
     super.key,
     required this.onAddHistory,
+    required this.onAddFavourite,
+    required this.onViewFavourite,
+    required this.amountController,
+    required this.fromCurrency,
+    required this.toCurrency,
+    required this.onUpdateFromCurrency,
+    required this.onUpdateToCurrency,
     this.reConversionData,
+    required this.notifications,
   });
 
   @override
@@ -19,10 +35,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String fromCurrency = 'USD';
-  String toCurrency = 'THB';
   String result = '';
-  final amountController = TextEditingController(text: '100');
+  bool isConverting = false;
 
   final List<Map<String, String>> currencyList = [
     {'code': 'USD', 'name': 'US Dollar'},
@@ -48,6 +62,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void swapCurrencies() {
+    widget.onUpdateFromCurrency(widget.toCurrency);
+    widget.onUpdateToCurrency(widget.fromCurrency);
+    setState(() => result = '');
+  }
+
   void handleReconversion(String data) {
     final parts = data.split(' ');
     if (parts.length == 4 && parts[2] == 'to') {
@@ -55,11 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final from = parts[1];
       final to = parts[3];
       if (parsedAmount != null) {
-        setState(() {
-          fromCurrency = from;
-          toCurrency = to;
-          amountController.text = parsedAmount.toString();
-        });
+        widget.onUpdateFromCurrency(from);
+        widget.onUpdateToCurrency(to);
+        widget.amountController.text = parsedAmount.toString();
         convertCurrency();
       }
     }
@@ -74,34 +92,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (selected != null && selected is String) {
-      setState(() {
-        if (isFrom) {
-          fromCurrency = selected;
-        } else {
-          toCurrency = selected;
-        }
-        result = '';
-      });
+      if (isFrom) {
+        widget.onUpdateFromCurrency(selected);
+      } else {
+        widget.onUpdateToCurrency(selected);
+      }
+      setState(() => result = '');
     }
   }
 
   Future<void> convertCurrency() async {
-    final amount = double.tryParse(amountController.text) ?? 0;
+    setState(() => isConverting = true);
+    final amount = double.tryParse(widget.amountController.text) ?? 0;
+
     final url =
-        'https://api.frankfurter.app/latest?amount=$amount&from=$fromCurrency&to=$toCurrency';
+        'https://api.frankfurter.app/latest?amount=1&from=${widget.fromCurrency}&to=${widget.toCurrency}';
 
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final rate = data['rates'][toCurrency];
+        final rate = data['rates'][widget.toCurrency];
+        final calculated = amount * rate;
+        final formatted = calculated.toStringAsFixed(2);
+
         setState(() {
-          result =
-              amount >= 100
-                  ? '${rate.toStringAsFixed(2)} $toCurrency'
-                  : '$rate $toCurrency';
+          result = '$formatted ${widget.toCurrency}';
         });
-        widget.onAddHistory('$amount $fromCurrency to $toCurrency');
+
+        widget.onAddHistory(
+          '$amount ${widget.fromCurrency} to ${widget.toCurrency}',
+        );
       } else {
         throw Exception('Failed to load rate');
       }
@@ -109,6 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Error converting currency")),
       );
+    } finally {
+      setState(() => isConverting = false);
     }
   }
 
@@ -121,12 +144,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey)),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFFE6E6E6),
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -135,9 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () => selectCurrency(isFrom: isFrom),
                 child: Text(
                   currency,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
                     decoration: TextDecoration.underline,
                   ),
                 ),
@@ -152,88 +176,171 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget buildButton(String text, VoidCallback onPressed) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
+        onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF3399CC),
+          backgroundColor: isDark ? Colors.teal[300] : const Color(0xFF3399CC),
+          foregroundColor: isDark ? Colors.black : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        onPressed: onPressed,
-        child: Text(text, style: const TextStyle(fontSize: 18)),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.black : Colors.white,
+          ),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("Currency Converter"),
         centerTitle: true,
-        backgroundColor: const Color(0xFFE6E6E6),
-        foregroundColor: Colors.black,
+        backgroundColor:
+            Theme.of(context).appBarTheme.backgroundColor ?? Colors.transparent,
+        foregroundColor:
+            Theme.of(context).appBarTheme.foregroundColor ??
+            Theme.of(context).colorScheme.onBackground,
         elevation: 0,
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Icon(Icons.notifications_outlined),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (_) => NotificationScreen(
+                        notifications: widget.notifications,
+                      ),
+                ),
+              );
+            },
           ),
         ],
       ),
       body: GestureDetector(
-        behavior:
-            HitTestBehavior.opaque, // ensures taps are detected on empty space
-        onTap: () => FocusScope.of(context).unfocus(), // hides keyboard
+        behavior: HitTestBehavior.opaque,
+        onTap: () => FocusScope.of(context).unfocus(),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              children: [
-                buildCurrencyInput(
-                  label: 'From Currency',
-                  currency: fromCurrency,
-                  isFrom: true,
-                  trailing: TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Amount',
-                      isDense: true,
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Column(
+                  children: [
+                    buildCurrencyInput(
+                      label: 'From Currency',
+                      currency: widget.fromCurrency,
+                      isFrom: true,
+                      trailing: TextField(
+                        controller: widget.amountController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: TextStyle(
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Amount',
+                          isDense: true,
+                          filled: true,
+                          fillColor: Theme.of(context).cardColor,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                    ),
+                    const SizedBox(height: 24),
+                    buildCurrencyInput(
+                      label: 'To Currency',
+                      currency: widget.toCurrency,
+                      isFrom: false,
+                      trailing: Text(
+                        result,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Theme.of(context).textTheme.bodyLarge?.color,
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 32),
+                    buildButton(
+                      isConverting ? "Converting..." : "Convert",
+                      convertCurrency,
+                    ),
+                    const SizedBox(height: 16),
+                    buildButton("Add to Favourite", () async {
+                      final amount = widget.amountController.text;
+                      if (amount.isNotEmpty && result.isNotEmpty) {
+                        final fav =
+                            "$amount ${widget.fromCurrency} to ${widget.toCurrency}";
+                        widget.onAddFavourite(fav);
+                        widget.onViewFavourite();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Please convert before adding to favourites",
+                            ),
+                          ),
+                        );
+                      }
+                    }),
+                    const SizedBox(height: 16),
+                    buildButton("View Favourite", widget.onViewFavourite),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 105,
+                right: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Theme.of(context).cardColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.swap_vert,
+                      color:
+                          isDark ? Colors.tealAccent : const Color(0xFF3399CC),
+                    ),
+                    onPressed: swapCurrencies,
                   ),
                 ),
-                const SizedBox(height: 24),
-                buildCurrencyInput(
-                  label: 'To Currency',
-                  currency: toCurrency,
-                  isFrom: false,
-                  trailing: Text(result, style: const TextStyle(fontSize: 16)),
-                ),
-                const SizedBox(height: 32),
-                buildButton("Convert", convertCurrency),
-                const SizedBox(height: 16),
-                buildButton("Add to Favourite", () {}),
-                const SizedBox(height: 16),
-                buildButton("View Favourite", () {}),
-                const SizedBox(height: 32),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
