@@ -29,11 +29,12 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     setState(() {
       _favourites.remove(item);
     });
-    // You can also update shared preferences if needed
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Favourite Conversions"),
@@ -45,69 +46,82 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
               if (_favourites.isNotEmpty) {
                 showDialog(
                   context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text("Clear All Favourites?"),
-                    content: const Text("Are you sure you want to remove all?"),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text("Cancel"),
+                  builder:
+                      (_) => AlertDialog(
+                        title: const Text("Clear All Favourites?"),
+                        content: const Text(
+                          "Are you sure you want to remove all?",
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              widget.onClear();
+                              setState(() => _favourites.clear());
+                            },
+                            child: const Text("Yes"),
+                          ),
+                        ],
                       ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          widget.onClear();
-                          setState(() => _favourites.clear());
-                        },
-                        child: const Text("Yes"),
-                      ),
-                    ],
-                  ),
                 );
               }
             },
           ),
         ],
       ),
-      body: _favourites.isEmpty
-          ? const Center(child: Text("No favourites yet"))
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _favourites.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final fav = _favourites[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context, fav); // return selected item
-                    widget.onReconvert(fav);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 16, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.star, color: Colors.orange),
-                          onPressed: () => removeFavourite(fav),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            fav,
-                            style: const TextStyle(fontSize: 16),
+      body:
+          _favourites.isEmpty
+              ? const Center(child: Text("No favourites yet"))
+              : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _favourites.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final fav = _favourites[index];
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context, fav);
+                      widget.onReconvert(fav);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.star, color: Colors.orange),
+                            onPressed: () => removeFavourite(fav),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              fav,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    isDark
+                                        ? Colors.white
+                                        : Colors.black, // ✅ ชัดเจนขึ้น
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
     );
   }
 }

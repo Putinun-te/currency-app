@@ -14,18 +14,21 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.currencies.where((c) {
-      final code = c['code']!.toLowerCase();
-      final name = c['name']!.toLowerCase();
-      return code.contains(search.toLowerCase()) ||
-          name.contains(search.toLowerCase());
-    }).toList();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final filtered =
+        widget.currencies.where((c) {
+          final code = c['code']!.toLowerCase();
+          final name = c['name']!.toLowerCase();
+          return code.contains(search.toLowerCase()) ||
+              name.contains(search.toLowerCase());
+        }).toList();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("Select Currency"),
-        backgroundColor: const Color(0xFFE6E6E6),
-        foregroundColor: Colors.black,
+        centerTitle: true,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
       ),
       body: Column(
         children: [
@@ -33,13 +36,25 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
             padding: const EdgeInsets.all(12),
             child: TextField(
               onChanged: (val) => setState(() => search = val),
+              style: TextStyle(color: isDark ? Colors.white : Colors.black),
               decoration: InputDecoration(
+                filled: true,
+                fillColor: isDark ? Colors.grey[850] : Colors.grey[200],
                 hintText: "Search currency",
-                prefixIcon: const Icon(Icons.search),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                hintStyle: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[700],
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: isDark ? Colors.grey[400] : Colors.black,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
@@ -47,17 +62,29 @@ class _CurrencySelectionScreenState extends State<CurrencySelectionScreen> {
           Expanded(
             child: ListView.separated(
               itemCount: filtered.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder:
+                  (_, __) =>
+                      Divider(height: 1, color: Theme.of(context).dividerColor),
               itemBuilder: (_, i) {
                 final c = filtered[i];
                 return ListTile(
-                  title: Text(c['code']!),
-                  subtitle: Text(c['name']!),
+                  title: Text(
+                    c['code']!,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  subtitle: Text(
+                    c['name']!,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[700],
+                    ),
+                  ),
                   onTap: () => Navigator.pop(context, c['code']),
                 );
               },
             ),
-          )
+          ),
         ],
       ),
     );

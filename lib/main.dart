@@ -244,7 +244,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (!favourites.contains(record)) {
       setState(() {
         favourites.add(record);
-        saveFavourites(); // บันทึกลง SharedPreferences ด้วย
+        saveFavourites();  
       });
     }
   }
