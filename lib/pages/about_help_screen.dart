@@ -28,7 +28,7 @@ class AboutHelpScreen extends StatelessWidget {
                     (_) => AlertDialog(
                       title: const Text("Support"),
                       content: const Text(
-                        "For help, contact:\nPutinun.tac@sstudent.mahidol.edu\nPanaiyakorn.pha@student.mahidol.edu",
+                        "For help, contact:\nPutinun.tac@student.mahidol.edu\nPanaiyakorn.pha@student.mahidol.edu",
                       ),
                       backgroundColor: theme.dialogBackgroundColor,
                       titleTextStyle: theme.textTheme.titleLarge,

@@ -70,16 +70,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void handleReconversion(String data) {
     final parts = data.split(' ');
-    if (parts.length == 4 && parts[2] == 'to') {
-      final parsedAmount = double.tryParse(parts[0]);
-      final from = parts[1];
-      final to = parts[3];
-      if (parsedAmount != null) {
-        widget.onUpdateFromCurrency(from);
-        widget.onUpdateToCurrency(to);
-        widget.amountController.text = parsedAmount.toString();
-        convertCurrency();
-      }
+    if (parts.length == 3 && parts[1] == 'to') {
+      final from = parts[0];
+      final to = parts[2];
+      widget.onUpdateFromCurrency(from);
+      widget.onUpdateToCurrency(to);
+      widget.amountController.text = ''; // Clear previous input
+      setState(() => result = ''); // Optional: reset result
     }
   }
 
@@ -293,23 +290,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       convertCurrency,
                     ),
                     const SizedBox(height: 16),
-                    buildButton("Add to Favourite", () async {
-                      final amount = widget.amountController.text;
-                      if (amount.isNotEmpty && result.isNotEmpty) {
-                        final fav =
-                            "$amount ${widget.fromCurrency} to ${widget.toCurrency}";
-                        widget.onAddFavourite(fav);
-                        widget.onViewFavourite();
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Please convert before adding to favourites",
-                            ),
-                          ),
-                        );
-                      }
+                    buildButton("Add to Favourite", () {
+                      final fav =
+                          "${widget.fromCurrency} to ${widget.toCurrency}";
+                      widget.onAddFavourite(fav);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Added to favourites")),
+                      );
                     }),
+
                     const SizedBox(height: 16),
                     buildButton("View Favourite", widget.onViewFavourite),
                   ],

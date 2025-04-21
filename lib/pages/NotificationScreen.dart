@@ -22,21 +22,17 @@ class NotificationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Notifications"),
         centerTitle: true,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        foregroundColor: Theme.of(context).appBarTheme.foregroundColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: notifications.isEmpty
-          ? const Center(child: Text("No notifications"))
+          ? const Center(child: Text("No notifications yet"))
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: notifications.length,
@@ -46,22 +42,25 @@ class NotificationScreen extends StatelessWidget {
                 return Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[850] : const Color(0xFFF0F0F0),
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         item['message'],
-                        style: Theme.of(context).textTheme.bodyLarge,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         formatTimestamp(item['timestamp']),
-                        style: TextStyle(
-                          color: Colors.grey[600],
+                        style: const TextStyle(
                           fontSize: 13,
+                          color: Colors.grey,
                         ),
                       ),
                     ],

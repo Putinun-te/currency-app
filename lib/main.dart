@@ -7,7 +7,9 @@ import 'pages/settings_screen.dart';
 import 'pages/favourite_screen.dart';
 import 'dart:convert';
 
-void main() => runApp(const MyApp());
+void main() async {
+  runApp(MyApp());
+}
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -114,64 +116,76 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   String currentFromCurrency = 'USD';
   String currentToCurrency = 'THB';
-List<Map<String, dynamic>> notifications = [];
+  List<Map<String, dynamic>> notifications = [];
 
-Future<void> checkFavouriteRateDrops() async {
-  final prefs = await SharedPreferences.getInstance();
-  final favs = prefs.getStringList('favourites') ?? [];
+  Future<void> checkFavouriteRateDrops() async {
+    if (!allowNotification) return;
 
-  List<Map<String, dynamic>> foundNotifications = [];
+    final prefs = await SharedPreferences.getInstance();
+    final favs = prefs.getStringList('favourites') ?? [];
 
-  for (String fav in favs) {
-    try {
-      final parts = fav.split(' ');
-      if (parts.length >= 4 && parts[2] == "to") {
-        final from = parts[1];
-        final to = parts[3];
+    List<Map<String, dynamic>> foundNotifications = [];
 
-        final url =
-            'https://api.frankfurter.app/latest?amount=1&from=$from&to=$to';
+    for (String fav in favs) {
+      if (!fav.contains(" to ")) continue;
+
+      final parts = fav.split(" to ");
+      final from = parts[0];
+      final to = parts[1];
+
+      final url =
+          'https://api.frankfurter.app/latest?amount=1&from=$from&to=$to';
+      try {
         final response = await http.get(Uri.parse(url));
-
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           final rate = data['rates'][to];
-          if (rate != null && rate < 1.0) {
+          if (rate != null && rate < 35) {
             foundNotifications.add({
-              'message': '$from → $to dropped to ${rate.toStringAsFixed(2)} $to',
+              'message': '1 $from reached ${rate.toStringAsFixed(2)} $to',
               'timestamp': DateTime.now(),
             });
           }
         }
+      } catch (e) {
+        debugPrint("Notification error: $e");
       }
-    } catch (e) {
-      debugPrint("Error checking $fav: $e");
     }
-  }
 
-  setState(() {
-    notifications = foundNotifications;
-  });
-}
+    setState(() {
+      notifications = foundNotifications;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     loadFavourites();
     loadDefaultCurrencies();
+    loadNotificationSetting();
     checkFavouriteRateDrops();
   }
 
   void clearAllData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Clear all SharedPreferences
+    await prefs.clear(); // 🔥 ล้างทุกอย่าง
 
     setState(() {
-      favourites.clear();
       conversionHistory.clear();
-      fromCurrency = 'USD';
-      toCurrency = 'THB';
-      widget.onThemeToggle(false); // Reset to light mode
+      favourites.clear();
+
+      // 🔁 รีเซ็ต theme
+      widget.onThemeToggle(false);
+
+      // ✅ รีเซ็ตค่า currency ทั้ง default และ current
+      fromCurrency = 'THB';
+      toCurrency = 'USD';
+      defaultFromCurrency = 'THB';
+      defaultToCurrency = 'USD';
+      currentFromCurrency = 'THB';
+      currentToCurrency = 'USD';
+
+      reConversionData = null;
       _currentIndex = 0;
     });
   }
@@ -186,6 +200,23 @@ Future<void> checkFavouriteRateDrops() async {
       defaultToCurrency = defaultTo;
       currentFromCurrency = defaultFrom; // initialize current from default
       currentToCurrency = defaultTo;
+    });
+  }
+
+  bool allowNotification = true;
+
+  void loadNotificationSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      allowNotification = prefs.getBool('allowNotification') ?? true;
+    });
+  }
+
+  void toggleNotification(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('allowNotification', value);
+    setState(() {
+      allowNotification = value;
     });
   }
 
@@ -213,7 +244,7 @@ Future<void> checkFavouriteRateDrops() async {
     if (!favourites.contains(record)) {
       setState(() {
         favourites.add(record);
-        saveFavourites();
+        saveFavourites(); // บันทึกลง SharedPreferences ด้วย
       });
     }
   }
@@ -233,8 +264,8 @@ Future<void> checkFavouriteRateDrops() async {
     });
   }
 
-  void openFavourites(BuildContext context) {
-    Navigator.push(
+  void openFavourites(BuildContext context) async {
+    final selected = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder:
@@ -245,6 +276,17 @@ Future<void> checkFavouriteRateDrops() async {
             ),
       ),
     );
+
+    if (selected != null && selected.contains(" to ")) {
+      final parts = selected.split(" to ");
+      if (parts.length == 2) {
+        setState(() {
+          currentFromCurrency = parts[0];
+          currentToCurrency = parts[1];
+          _currentIndex = 0;
+        });
+      }
+    }
   }
 
   @override
@@ -261,7 +303,7 @@ Future<void> checkFavouriteRateDrops() async {
         onUpdateFromCurrency:
             (val) => setState(() => currentFromCurrency = val),
         onUpdateToCurrency: (val) => setState(() => currentToCurrency = val),
-          notifications: notifications,
+        notifications: notifications,
       ),
 
       HistoryScreen(
@@ -271,7 +313,9 @@ Future<void> checkFavouriteRateDrops() async {
       ),
       SettingsScreen(
         isDarkMode: widget.isDarkMode,
+        allowNotification: allowNotification,
         onToggleTheme: widget.onThemeToggle,
+        onToggleNotification: toggleNotification,
         fromCurrency: defaultFromCurrency,
         toCurrency: defaultToCurrency,
         onFromCurrencyChanged: (val) async {
@@ -289,6 +333,7 @@ Future<void> checkFavouriteRateDrops() async {
           }
         },
         onClearAll: clearAllData,
+        onPickNotifyTime: () {},
       ),
     ];
 
